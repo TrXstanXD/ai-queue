@@ -97,35 +97,19 @@
       <input type="number" id="videoCount" min="1" max="50" placeholder="Number of videos">
       <button onclick="generatePlaylist()">🎬 Generate Playlist</button>
     </div>
-    <div id="player"></div>
+    <div id="playerContainer">
+      <iframe id="player" allowfullscreen></iframe>
+    </div>
     <div id="videoControls" style="display: none;">
       <button onclick="skipBack()">⬅️</button>
       <button onclick="skipNext()">➡️</button>
     </div>
   </div>
 
-  <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     let videoQueue = [];
     let videoTitles = [];
     let currentIndex = 0;
-    let ytPlayer;
-
-    function onYouTubeIframeAPIReady() {
-      ytPlayer = new YT.Player("player", {
-        height: "450",
-        width: "800",
-        events: {
-          'onStateChange': onPlayerStateChange
-        }
-      });
-    }
-
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.ENDED) {
-        skipNext();
-      }
-    }
 
     async function generatePlaylist() {
       const description = document.getElementById("description").value;
@@ -180,8 +164,10 @@
     }
 
     function playCurrent() {
-      if (videoQueue[currentIndex] && ytPlayer && ytPlayer.cueVideoById) {
-        ytPlayer.cueVideoById(videoQueue[currentIndex]);
+      if (videoQueue[currentIndex]) {
+        const player = document.getElementById("player");
+        const videoId = videoQueue[currentIndex];
+        player.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
         updateQueueUI();
       }
     }
