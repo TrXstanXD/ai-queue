@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Playlist Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background-color: #111;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 250px;
+      background: #181818;
+      border-right: 1px solid #333;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .sidebar h2 {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .queue-item {
+      padding: 8px;
+      margin-bottom: 5px;
+      background: #222;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .queue-item.active {
+      background: #e50914;
+      color: white;
+    }
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      background: #e50914;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    iframe {
+      width: 100%;
+      max-width: 800px;
+      height: 450px;
+      border: none;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+    .form-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    textarea, input[type="number"] {
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: none;
+      width: 100%;
+      max-width: 600px;
+    }
+    #videoControls {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>🎞️ Playlist</h2>
+    <div id="queueList"></div>
+  </div>
+
+  <div class="main">
+    <h1>AI Playlist Generator</h1>
+    <div class="form-section">
+      <textarea id="description" placeholder="Describe the type of playlist you want..."></textarea>
+      <input type="number" id="videoCount" min="1" max="50" placeholder="Number of videos">
+      <button onclick="generatePlaylist()">🎬 Generate Playlist</button>
+    </div>
+    <div id="player"></div>
+    <div id="videoControls" style="display: none;">
+      <button onclick="skipBack()">⬅️</button>
+      <button onclick="skipNext()">➡️</button>
+    </div>
+  </div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    let videoQueue = [];
+    let videoTitles = [];
+    let currentIndex = 0;
+    let ytPlayer;
+
+    function onYouTubeIframeAPIReady() {
+      ytPlayer = new YT.Player("player", {
+        height: "450",
+        width: "800",
+        events: {
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.ENDED) {
+        skipNext();
+      }
+    }
+
+    function generatePlaylist() {
+      const description = document.getElementById("description").value;
+      const count = parseInt(document.getElementById("videoCount").value);
+      if (!description || !count) return alert("Please fill out both fields.");
+
+      // Simulate AI with static example video IDs
+      const exampleIDs = [
+        "dQw4w9WgXcQ", "3tmd-ClpJxA", "ktvTqknDobU", "RgKAFK5djSk", "hLQl3WQQoQ0"
+      ];
+      videoQueue = exampleIDs.slice(0, count);
+      videoTitles = videoQueue.map(id => ({
+        title: "Video Title",
+        thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`
+      }));
+      currentIndex = 0;
+      updateQueueUI();
+      playCurrent();
+      document.getElementById("videoControls").style.display = "block";
+    }
+
+    function updateQueueUI() {
+      const queueList = document.getElementById("queueList");
+      queueList.innerHTML = "";
+      videoQueue.forEach((id, index) => {
+        const div = document.createElement("div");
+        div.className = "queue-item" + (index === currentIndex ? " active" : "");
+        div.textContent = videoTitles[index].title || `Video ${index + 1}`;
+        div.onclick = () => {
+          currentIndex = index;
+          playCurrent();
+        };
+        queueList.appendChild(div);
+      });
+    }
+
+    function playCurrent() {
+      if (videoQueue[currentIndex]) {
+        ytPlayer.loadVideoById(videoQueue[currentIndex]);
+        updateQueueUI();
+      }
+    }
+
+    function skipNext() {
+      if (currentIndex < videoQueue.length - 1) {
+        currentIndex++;
+        playCurrent();
+      }
+    }
+
+    function skipBack() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        playCurrent();
+      }
+    }
+  </script>
+</body>
+</html>
