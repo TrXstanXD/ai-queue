@@ -60,9 +60,9 @@
       width: 100%;
       max-width: 800px;
       height: 450px;
-      border: none;
-      border-radius: 10px;
       margin-top: 10px;
+      border-radius: 10px;
+      overflow: hidden;
     }
     .form-section {
       display: flex;
@@ -104,32 +104,15 @@
     </div>
   </div>
 
-  <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     let videoQueue = [];
     let videoTitles = [];
     let currentIndex = 0;
-    let ytPlayer;
+    let ytPlayer = null;
+    let ytReady = false;
 
     function onYouTubeIframeAPIReady() {
-      ytPlayer = new YT.Player("player", {
-        height: "450",
-        width: "800",
-        events: {
-          'onStateChange': onPlayerStateChange
-        },
-        playerVars: {
-          autoplay: 1,
-          rel: 0,
-          modestbranding: 1
-        }
-      });
-    }
-
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.ENDED) {
-        skipNext();
-      }
+      ytReady = true;
     }
 
     async function generatePlaylist() {
@@ -149,9 +132,7 @@
         }
 
         const validItems = data.items.filter(item => item.id.kind === "youtube#video");
-        if (validItems.length === 0) {
-          throw new Error("No embeddable videos found.");
-        }
+        if (validItems.length === 0) throw new Error("No embeddable videos found.");
 
         videoQueue = validItems.map(item => item.id.videoId);
         videoTitles = validItems.map(item => ({
@@ -161,7 +142,8 @@
 
         currentIndex = 0;
         updateQueueUI();
-        playCurrent();
+        loadPlayerWithVideo(videoQueue[currentIndex]);
+
         document.getElementById("videoControls").style.display = "block";
       } catch (err) {
         alert("Failed to fetch videos: " + err.message);
@@ -178,32 +160,55 @@
         div.textContent = videoTitles[index].title || `Video ${index + 1}`;
         div.onclick = () => {
           currentIndex = index;
-          playCurrent();
+          loadPlayerWithVideo(videoQueue[currentIndex]);
         };
         queueList.appendChild(div);
       });
     }
 
-    function playCurrent() {
-      if (videoQueue[currentIndex] && ytPlayer && ytPlayer.loadVideoById) {
-        ytPlayer.loadVideoById(videoQueue[currentIndex]);
-        updateQueueUI();
+    function loadPlayerWithVideo(videoId) {
+      if (!ytReady) return;
+      if (ytPlayer) {
+        ytPlayer.loadVideoById(videoId);
+      } else {
+        ytPlayer = new YT.Player("player", {
+          videoId: videoId,
+          height: "450",
+          width: "800",
+          playerVars: {
+            autoplay: 1,
+            rel: 0,
+            modestbranding: 1
+          },
+          events: {
+            onStateChange: onPlayerStateChange
+          }
+        });
+      }
+      updateQueueUI();
+    }
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.ENDED) {
+        skipNext();
       }
     }
 
     function skipNext() {
       if (currentIndex < videoQueue.length - 1) {
         currentIndex++;
-        playCurrent();
+        loadPlayerWithVideo(videoQueue[currentIndex]);
       }
     }
 
     function skipBack() {
       if (currentIndex > 0) {
         currentIndex--;
-        playCurrent();
+        loadPlayerWithVideo(videoQueue[currentIndex]);
       }
     }
   </script>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
