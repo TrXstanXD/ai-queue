@@ -133,15 +133,23 @@
       if (!description || !count) return alert("Please fill out both fields.");
 
       const apiKey = "AIzaSyApLkr7FhVmKEQwQY3pxNFqnmsRMHSwB5w";
-      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${count}&q=${encodeURIComponent(description)}&key=${apiKey}`;
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=${count}&q=${encodeURIComponent(description)}&key=${apiKey}`;
 
       try {
         const response = await fetch(url);
         const data = await response.json();
-        if (!data.items) throw new Error("No results");
 
-        videoQueue = data.items.map(item => item.id.videoId);
-        videoTitles = data.items.map(item => ({
+        if (!data.items || data.items.length === 0) {
+          throw new Error("No results found.");
+        }
+
+        const validItems = data.items.filter(item => item.id.kind === "youtube#video");
+        if (validItems.length === 0) {
+          throw new Error("No embeddable videos found.");
+        }
+
+        videoQueue = validItems.map(item => item.id.videoId);
+        videoTitles = validItems.map(item => ({
           title: item.snippet.title,
           thumbnail: item.snippet.thumbnails.medium.url
         }));
@@ -151,7 +159,7 @@
         playCurrent();
         document.getElementById("videoControls").style.display = "block";
       } catch (err) {
-        alert("Failed to fetch videos. Check your API key or try a different prompt.");
+        alert("Failed to fetch videos: " + err.message);
         console.error(err);
       }
     }
@@ -172,8 +180,8 @@
     }
 
     function playCurrent() {
-      if (videoQueue[currentIndex]) {
-        ytPlayer.loadVideoById(videoQueue[currentIndex]);
+      if (videoQueue[currentIndex] && ytPlayer && ytPlayer.cueVideoById) {
+        ytPlayer.cueVideoById(videoQueue[currentIndex]);
         updateQueueUI();
       }
     }
