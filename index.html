@@ -127,24 +127,33 @@
       }
     }
 
-    function generatePlaylist() {
+    async function generatePlaylist() {
       const description = document.getElementById("description").value;
       const count = parseInt(document.getElementById("videoCount").value);
       if (!description || !count) return alert("Please fill out both fields.");
 
-      // Simulate AI with static example video IDs
-      const exampleIDs = [
-        "dQw4w9WgXcQ", "3tmd-ClpJxA", "ktvTqknDobU", "RgKAFK5djSk", "hLQl3WQQoQ0"
-      ];
-      videoQueue = exampleIDs.slice(0, count);
-      videoTitles = videoQueue.map(id => ({
-        title: "Video Title",
-        thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`
-      }));
-      currentIndex = 0;
-      updateQueueUI();
-      playCurrent();
-      document.getElementById("videoControls").style.display = "block";
+      const apiKey = "AIzaSyApLkr7FhVmKEQwQY3pxNFqnmsRMHSwB5w";
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${count}&q=${encodeURIComponent(description)}&key=${apiKey}`;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (!data.items) throw new Error("No results");
+
+        videoQueue = data.items.map(item => item.id.videoId);
+        videoTitles = data.items.map(item => ({
+          title: item.snippet.title,
+          thumbnail: item.snippet.thumbnails.medium.url
+        }));
+
+        currentIndex = 0;
+        updateQueueUI();
+        playCurrent();
+        document.getElementById("videoControls").style.display = "block";
+      } catch (err) {
+        alert("Failed to fetch videos. Check your API key or try a different prompt.");
+        console.error(err);
+      }
     }
 
     function updateQueueUI() {
