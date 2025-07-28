@@ -16,7 +16,7 @@
       overflow: hidden;
     }
     .sidebar {
-      width: 250px;
+      width: 300px;
       background: #181818;
       border-right: 1px solid #333;
       padding: 10px;
@@ -27,7 +27,10 @@
       margin-bottom: 10px;
     }
     .queue-item {
-      padding: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px;
       margin-bottom: 5px;
       background: #222;
       border-radius: 6px;
@@ -38,6 +41,11 @@
       background: #e50914;
       color: white;
     }
+    .queue-item img {
+      width: 60px;
+      height: 34px;
+      border-radius: 4px;
+    }
     .main {
       flex: 1;
       display: flex;
@@ -47,14 +55,14 @@
       position: relative;
     }
     button {
-      padding: 10px 20px;
-      font-size: 16px;
+      padding: 10px 14px;
+      font-size: 14px;
       border: none;
       background: #e50914;
       color: white;
       border-radius: 6px;
       cursor: pointer;
-      margin: 5px;
+      margin: 4px;
     }
     #player {
       width: 100%;
@@ -88,6 +96,9 @@
   <div class="sidebar">
     <h2>🎞️ Playlist</h2>
     <div id="queueList"></div>
+    <button onclick="shufflePlaylist()">🔀 Shuffle</button>
+    <button onclick="exportPlaylist()">⬇️ Export</button>
+    <input type="file" id="importFile" accept=".txt" onchange="importPlaylist()" style="margin-top: 5px; color: white;">
   </div>
 
   <div class="main">
@@ -127,10 +138,6 @@
         const response = await fetch(url);
         const data = await response.json();
 
-        if (!data.items || data.items.length === 0) {
-          throw new Error("No results found.");
-        }
-
         const validItems = data.items.filter(item => item.id.kind === "youtube#video");
         if (validItems.length === 0) throw new Error("No embeddable videos found.");
 
@@ -157,7 +164,10 @@
       videoQueue.forEach((id, index) => {
         const div = document.createElement("div");
         div.className = "queue-item" + (index === currentIndex ? " active" : "");
-        div.textContent = videoTitles[index].title || `Video ${index + 1}`;
+        div.innerHTML = `
+          <img src="${videoTitles[index].thumbnail}" alt="thumb">
+          <span>${videoTitles[index].title}</span>
+        `;
         div.onclick = () => {
           currentIndex = index;
           loadPlayerWithVideo(videoQueue[currentIndex]);
@@ -206,6 +216,61 @@
         currentIndex--;
         loadPlayerWithVideo(videoQueue[currentIndex]);
       }
+    }
+
+    function shufflePlaylist() {
+      for (let i = videoQueue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [videoQueue[i], videoQueue[j]] = [videoQueue[j], videoQueue[i]];
+        [videoTitles[i], videoTitles[j]] = [videoTitles[j], videoTitles[i]];
+      }
+      currentIndex = 0;
+      updateQueueUI();
+      loadPlayerWithVideo(videoQueue[0]);
+    }
+
+    function exportPlaylist() {
+      if (videoQueue.length === 0) return alert("No playlist to export.");
+      const lines = videoQueue.map((id, i) => `${i + 1}. ${videoTitles[i].title} - https://youtube.com/watch?v=${id}`);
+      const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "playlist.txt";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function importPlaylist() {
+      const fileInput = document.getElementById("importFile");
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const lines = e.target.result.split("\n").filter(l => l.includes("https://"));
+        videoQueue = lines.map(line => {
+          const match = line.match(/v=([a-zA-Z0-9_-]+)/);
+          return match ? match[1] : null;
+        }).filter(Boolean);
+
+        videoTitles = lines.map(line => {
+          const title = line.split(" - ")[0].replace(/^\d+\. /, "").trim();
+          const id = line.match(/v=([a-zA-Z0-9_-]+)/)?.[1];
+          return {
+            title,
+            thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`
+          };
+        });
+
+        currentIndex = 0;
+        updateQueueUI();
+        loadPlayerWithVideo(videoQueue[currentIndex]);
+        document.getElementById("videoControls").style.display = "block";
+      };
+      reader.readAsText(file);
     }
   </script>
 
